@@ -1,7 +1,8 @@
 // constants definitions
+//#define DEBUG	//in dev mode or not, conditional complication
 #define RATE 16000
 #define DUR 1
-#define RCMD "arecord -r16000 -c1 -f S16_LE -d5 -q test.wav"
+#define RCMD "arecord -r16000 -c1 -f S16_LE -d1 -q test.wav"
 // data structures
 struct WAVHDR{
 	char ChunkID[4];		// must be "RIFF"
