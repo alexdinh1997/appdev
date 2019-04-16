@@ -2,6 +2,65 @@
 #include <math.h>
 #include "sound.h"
 #include "screen.h"
+
+void fillID(char *d, const char *s)
+{
+	for(int i=0; i<4; i++)
+		*d++ = *s++;
+}
+void testTone(int c, int fl, int fr, float d)
+{
+	if (c<1 || c>2)
+{		printf("Wrong number of channels.\n");
+		return;
+	}
+	if(fl<50 || fl>16000){
+		printf("Frequency is out of range\n");
+		return;
+	}
+	if(d<1.0 || d>10.0){
+		printf("wrong duration\n");
+		return;
+	}
+//al the argument are okay,
+//1. the rest of code is to make a correct wave header,
+//2. generate the correct samples,
+//3. write the both header and samples to a file 
+
+	struct WAVHDR h;
+	int samples = 44100*d;	//duration is in second
+	fillID(h.ChunkID, "RIFF");
+	fillID(h.Format, "WAVE");
+	fillID(h.Subchunk1ID, "fmt ");
+	fillID(h.Subchunk2ID, "data");
+	h.Subchunk1Size = 16;	//constant value
+	h.AudioFormat = 1;
+	h.SampleRate = 44100;
+	h.BitsPerSample = 16;
+	h.BlockAlign= c*16/8;
+	h.NumChannels=c;
+	h.ByteRate= 44100*c*16/8;
+	h.Subchunk2Size=samples*c*16/8;
+	h.ChunkSize= h.Subchunk2Size + 36;
+	FILE *fp = fopen("testTone.wav", "w");
+	if(fp == NULL){
+		printf("cannot open a file\n");
+		return;
+	}
+	fwrite(&h, sizeof(h), 1 , fp); // write the header to file
+	//generat samples, and write to file
+	for(int i=0; i<samples; i++){
+		short sL = sin(2*PI*fl*i/44100);
+		fwrite(&sL, sizeof(short), 1, fp);
+		if (c==2){
+			short sR = 32767.0 * sin(2*PI*fr*i/44100);
+			fwrite(&sR, sizeof(short), 1, fp);
+		}
+	}
+	//end of for
+	fclose(fp);	//close the file
+	printf("TestTone is generated\n");
+}
 void showID(char *idname, char *id){
 	int i;
 	printf("%s : ", idname);
@@ -9,6 +68,18 @@ void showID(char *idname, char *id){
 		printf("%c", id[i]);
 	puts("");
 }
+
+//this function is only called by displayWAVDATA(), so no need to put a declaration in sound.h.
+// the function find how many peaks from 80 piece-of decibel value
+int findPeaks(int d[]){
+	int c=0,i;
+	for(i=1;i<80;i++){
+		if(d[i]>=75 && d[i-1]<75) c++;
+	}
+	if(d[0] >= 75) c++;
+	return c;
+}
+
 
 //this function gets one second of samples (16000) and calculates 
 //80 pieces of decibels value we know we need to calculate one decibel
@@ -33,9 +104,13 @@ void displayWAVDATA(short s[]) {
 	}
 #ifndef DEBUG
 	barChart(dB);
+	int peaks = findPeaks(dB);
+	setColors(WHITE, bg(BLACK));
+	printf("\033[1;61H");
+	printf("Peaks: %d	\n",peaks);
+
 #endif
 }
-
 void displayWAVHDR(struct WAVHDR h){
 #ifdef DEBUG
 	showID("ChunkID", h.ChunkID);
